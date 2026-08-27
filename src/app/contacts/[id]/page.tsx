@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import ContactAvatar from "@/components/contacts/ContactAvatar";
 import DeleteContactButton from "@/components/contacts/DeleteContactButton";
+import SaveToPhoneButton from "@/components/contacts/SaveToPhoneButton";
 import { buttonClasses } from "@/components/ui/Button";
 import { getContact } from "@/lib/contacts/api";
 import AddressBook from "@/components/contacts/AddressBook";
@@ -69,6 +70,7 @@ export default async function ContactDetailPage({ params }: PageProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <SaveToPhoneButton contact={contact} />
           <Link
             href={`/contacts/${contact.id}/edit`}
             className={buttonClasses("secondary")}

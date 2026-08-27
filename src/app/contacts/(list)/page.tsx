@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import ApiErrorPanel from "@/components/contacts/ApiErrorPanel";
 import ApiStatusBadge from "@/components/contacts/ApiStatusBadge";
-import ContactsTable from "@/components/contacts/ContactsTable";
+import ContactsDirectory from "@/components/contacts/ContactsDirectory";
 import ContactsToolbar from "@/components/contacts/ContactsToolbar";
 import EmptyState from "@/components/contacts/EmptyState";
 import Pagination from "@/components/contacts/Pagination";
@@ -43,7 +43,10 @@ export default async function ContactsPage({
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+            Phone book
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-foreground">
             Contacts
           </h1>
           <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
@@ -77,7 +80,7 @@ export default async function ContactsPage({
 
           {result && result.items.length > 0 ? (
             <>
-              <ContactsTable contacts={result.items} query={query} />
+              <ContactsDirectory contacts={result.items} query={query} />
               <Pagination
                 query={query}
                 total={result.total}

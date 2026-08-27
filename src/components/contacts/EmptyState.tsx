@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, SearchX, Users } from "lucide-react";
+import { BookUser, Plus, SearchX } from "lucide-react";
 import { buttonClasses } from "@/components/ui/Button";
 
 /** Shown when the list has nothing in it — either truly empty or filtered out. */
@@ -11,7 +11,7 @@ export default function EmptyState({
   clearHref: string;
 }) {
   const filtered = Boolean(searchTerm);
-  const Icon = filtered ? SearchX : Users;
+  const Icon = filtered ? SearchX : BookUser;
 
   return (
     <div className="rounded-lg border border-dashed border-border bg-card/50 px-6 py-16 text-center">
@@ -20,7 +20,7 @@ export default function EmptyState({
         strokeWidth={1.5}
         aria-hidden="true"
       />
-      <h2 className="mt-4 font-display text-base font-semibold text-foreground">
+      <h2 className="mt-4 font-display text-base font-bold text-foreground">
         {filtered ? "No matching contacts" : "No contacts yet"}
       </h2>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
@@ -30,7 +30,7 @@ export default function EmptyState({
             Try a shorter term, or clear the search.
           </>
         ) : (
-          "Add the first one and it will show up here."
+          "Add the first one and it will be filed under its letter."
         )}
       </p>
 

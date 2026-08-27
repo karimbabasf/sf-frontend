@@ -5,25 +5,20 @@ import ThemeProvider from "@/components/ThemeProvider";
 import AppShell from "@/components/AppShell";
 
 // Self-hosted so production builds do not fetch Google Fonts at compile time.
-const inter = localFont({
-  src: "./fonts/inter-latin-wght-normal.woff2",
+const manrope = localFont({
+  src: "./fonts/manrope-latin-wght-normal.woff2",
   variable: "--font-sans",
   display: "swap",
-  weight: "100 900",
+  weight: "200 800",
 });
 
-const spaceGrotesk = localFont({
-  src: "./fonts/space-grotesk-latin-wght-normal.woff2",
+// Same family for headings: Manrope's 800 is a different voice from its 400,
+// so the directory keeps one type system instead of two competing ones.
+const manropeDisplay = localFont({
+  src: "./fonts/manrope-latin-wght-normal.woff2",
   variable: "--font-display",
   display: "swap",
-  weight: "300 700",
-});
-
-const jetbrainsMono = localFont({
-  src: "./fonts/jetbrains-mono-latin-wght-normal.woff2",
-  variable: "--font-mono",
-  display: "swap",
-  weight: "100 800",
+  weight: "200 800",
 });
 
 export const metadata: Metadata = {
@@ -43,7 +38,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+      className={`${manrope.variable} ${manropeDisplay.variable}`}
     >
       <body
         className="min-h-screen bg-background font-sans text-foreground antialiased transition-colors duration-200"
