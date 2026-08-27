@@ -10,6 +10,8 @@ export interface Contact {
   last_name: string;
   email: string;
   phone: string | null;
+  /** Profile picture as a base64 data URL, or `null` when there is none. */
+  photo: string | null;
   company: string | null;
   job_title: string | null;
   address: string | null;

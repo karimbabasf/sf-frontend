@@ -20,6 +20,42 @@ function optionalText(max: number, label: string) {
     .default(null);
 }
 
+/* ------------------------------------------------------------------ */
+/* Photo — mirrors `PhotoDataUrl` in the API's schemas.py               */
+/* ------------------------------------------------------------------ */
+
+export const PHOTO_MIME_TYPES: readonly string[] = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+];
+/**
+ * Limits describe the photo we *store*, not the file the user picks. The picker
+ * downscales to a square avatar first, so a large source image is fine.
+ *
+ * The stored cap has to clear the Next.js Server Action body limit (1 MB by
+ * default), which the base64 form value counts against at 4/3 its size.
+ */
+export const MAX_PHOTO_BYTES = 512 * 1024;
+export const MAX_PHOTO_KB = MAX_PHOTO_BYTES / 1024;
+/** Source files above this are not worth decoding, whatever they claim to be. */
+export const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+/** Square avatars: bigger than any place we render one, small once encoded. */
+export const AVATAR_PX = 512;
+const MAX_PHOTO_CHARS = Math.ceil((MAX_PHOTO_BYTES * 4) / 3) + 64;
+
+const PHOTO_DATA_URL =
+  /^data:image\/(?:png|jpeg|webp|gif);base64,([A-Za-z0-9+/]+={0,2})$/;
+
+/** Decoded byte length of a data URL, measured without decoding it. */
+export function photoBytes(dataUrl: string): number {
+  const data = PHOTO_DATA_URL.exec(dataUrl)?.[1];
+  if (!data) return 0;
+  const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
+  return Math.floor((data.length * 3) / 4) - padding;
+}
+
 function requiredText(max: number, label: string) {
   return z
     .string()
@@ -39,6 +75,20 @@ export const contactInputSchema = z.object({
     .pipe(z.email("Enter a valid email address"))
     .transform((value) => value.toLowerCase()),
   phone: optionalText(40, "Phone"),
+  photo: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || PHOTO_DATA_URL.test(value),
+      "Photo must be a PNG, JPEG, WebP, or GIF image",
+    )
+    .refine(
+      (value) => value === "" || photoBytes(value) <= MAX_PHOTO_BYTES,
+      `Photo must be ${MAX_PHOTO_KB} KB or smaller once resized`,
+    )
+    .transform((value) => value || null)
+    .nullable()
+    .default(null),
   company: optionalText(200, "Company"),
   job_title: optionalText(200, "Job title"),
   address: optionalText(300, "Address"),
@@ -77,7 +127,7 @@ export function zodFieldErrors(
 export interface ContactFieldSpec {
   name: keyof ContactInput;
   label: string;
-  type?: "text" | "email" | "tel" | "textarea";
+  type?: "text" | "email" | "tel" | "textarea" | "photo";
   required?: boolean;
   maxLength: number;
   placeholder?: string;
@@ -93,6 +143,19 @@ export interface ContactFieldGroup {
 }
 
 export const CONTACT_FIELD_GROUPS: ContactFieldGroup[] = [
+  {
+    title: "Photo",
+    description: `Optional. Any PNG, JPEG, WebP or GIF; it is cropped square and resized to ${AVATAR_PX}px.`,
+    fields: [
+      {
+        name: "photo",
+        label: "Profile photo",
+        type: "photo",
+        maxLength: MAX_PHOTO_CHARS,
+        wide: true,
+      },
+    ],
+  },
   {
     title: "Identity",
     description: "First name, last name, and email are required.",
