@@ -11,11 +11,13 @@ import {
   toFieldErrors,
 } from "@/lib/contacts/api";
 import {
+  addressListSchema,
   contactInputSchema,
+  formDataToAddresses,
   formDataToValues,
   zodFieldErrors,
 } from "@/lib/contacts/schema";
-import type { Contact, FormState } from "@/lib/contacts/types";
+import type { AddressInput, Contact, FormState } from "@/lib/contacts/types";
 
 /** Mutations for the contacts UI. Every one of these runs only on the server. */
 
@@ -39,26 +41,42 @@ export async function saveContactAction(
   formData: FormData,
 ): Promise<FormState> {
   const values = formDataToValues(formData);
+  const rawAddresses = formDataToAddresses(formData);
 
   const parsed = contactInputSchema.safeParse(values);
-  if (!parsed.success) {
+  const parsedAddresses = addressListSchema.safeParse(rawAddresses);
+
+  // Echoed back on failure so neither half of the form is lost on a round trip.
+  const addressValues = parsedAddresses.success
+    ? parsedAddresses.data
+    : (rawAddresses as AddressInput[]);
+
+  if (!parsed.success || !parsedAddresses.success) {
     return {
       status: "error",
       message: "Please fix the highlighted fields.",
-      fieldErrors: zodFieldErrors(parsed.error),
+      fieldErrors: {
+        ...(parsed.success ? {} : zodFieldErrors(parsed.error)),
+        ...(parsedAddresses.success
+          ? {}
+          : { addresses: parsedAddresses.error.issues[0]?.message }),
+      },
       values,
+      addressValues,
     };
   }
+
+  const input = { ...parsed.data, addresses: parsedAddresses.data };
 
   let saved: Contact;
   try {
     saved =
       contactId === null
-        ? await createContact(parsed.data)
-        : await replaceContact(contactId, parsed.data);
+        ? await createContact(input)
+        : await replaceContact(contactId, input);
   } catch (error) {
     if (error instanceof ApiUnreachableError) {
-      return { status: "error", message: UNREACHABLE, values };
+      return { status: "error", message: UNREACHABLE, values, addressValues };
     }
     if (error instanceof ApiError) {
       if (error.status === 409) {
@@ -69,6 +87,7 @@ export async function saveContactAction(
             email: apiErrorMessage(error, "This email is already in use."),
           },
           values,
+          addressValues,
         };
       }
       if (error.status === 422) {
@@ -77,12 +96,14 @@ export async function saveContactAction(
           message: "The API rejected these values.",
           fieldErrors: toFieldErrors(error),
           values,
+          addressValues,
         };
       }
       return {
         status: "error",
         message: apiErrorMessage(error, "The contact could not be saved."),
         values,
+        addressValues,
       };
     }
     throw error;

@@ -1,5 +1,6 @@
 import {
-  addressLine,
+  formatAddress,
+  primaryAddress,
   avatarHue,
   formatTimestamp,
   initials,
@@ -49,22 +50,46 @@ describe("jobLine", () => {
   });
 });
 
-describe("addressLine", () => {
+describe("formatAddress", () => {
+  const home = {
+    id: 1,
+    type: "Home" as const,
+    street: "1 Market St",
+    city: "San Francisco",
+    state: "CA",
+    postal_code: null,
+    country: "USA",
+  };
+
   it("skips the parts that are not filled in", () => {
-    expect(addressLine(makeContact())).toBe("San Francisco, CA, USA");
+    expect(formatAddress(home)).toBe("1 Market St, San Francisco, CA, USA");
   });
 
   it("pairs the state with the postal code", () => {
-    expect(
-      addressLine(makeContact({ address: "1 Market St", postal_code: "94105" })),
-    ).toBe("1 Market St, San Francisco, CA 94105, USA");
+    expect(formatAddress({ ...home, postal_code: "94105" })).toBe(
+      "1 Market St, San Francisco, CA 94105, USA",
+    );
   });
 
-  it("returns null when there is no address at all", () => {
+  it("falls back to the street alone", () => {
     expect(
-      addressLine(
-        makeContact({ city: null, state: null, country: null, postal_code: null }),
-      ),
-    ).toBeNull();
+      formatAddress({ ...home, city: null, state: null, country: null }),
+    ).toBe("1 Market St");
+  });
+});
+
+describe("primaryAddress", () => {
+  const home = { id: 1, type: "Home" as const, street: "Home St", city: null, state: null, postal_code: null, country: null };
+  const work = { id: 2, type: "Work" as const, street: "Work St", city: null, state: null, postal_code: null, country: null };
+  const other = { id: 3, type: "Other" as const, street: "Other St", city: null, state: null, postal_code: null, country: null };
+
+  it("prefers home, then work, then whatever is first", () => {
+    expect(primaryAddress(makeContact({ addresses: [work, home] }))?.type).toBe("Home");
+    expect(primaryAddress(makeContact({ addresses: [other, work] }))?.type).toBe("Work");
+    expect(primaryAddress(makeContact({ addresses: [other] }))?.type).toBe("Other");
+  });
+
+  it("returns null when the contact has no addresses", () => {
+    expect(primaryAddress(makeContact({ addresses: [] }))).toBeNull();
   });
 });
