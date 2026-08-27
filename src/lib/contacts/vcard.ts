@@ -8,17 +8,44 @@ import type { Contact } from "./types";
 
 /** Escape the characters that would otherwise end a property or a field. */
 function escape(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/([,;])/g, "\\$1");
+  return value
+    .replace(/\\/g, "\\\\")
+    // A bare CR would start a new physical line as surely as a LF does.
+    .replace(/\r\n?|\n/g, "\\n")
+    .replace(/([,;])/g, "\\$1");
 }
 
 /**
- * Fold long lines. RFC 6350 caps a line at 75 octets and continues it with a
+ * Fold long lines. RFC 6350 caps a line at 75 **octets** and continues it with a
  * leading space, which matters because an embedded photo is thousands of bytes.
+ *
+ * Measured in UTF-8 octets rather than JavaScript string length: an accented or
+ * CJK character is several octets, and slicing by length would both overrun the
+ * limit and cut a surrogate pair in half.
  */
 function fold(line: string): string {
-  if (line.length <= 75) return line;
-  const parts = [line.slice(0, 75)];
-  for (let i = 75; i < line.length; i += 74) parts.push(` ${line.slice(i, i + 74)}`);
+  const encoder = new TextEncoder();
+  if (encoder.encode(line).length <= 75) return line;
+
+  const parts: string[] = [];
+  let current = "";
+  let octets = 0;
+  // First line gets 75, continuations 74, because each starts with a space.
+  let limit = 75;
+
+  for (const character of line) {
+    const size = encoder.encode(character).length;
+    if (octets + size > limit) {
+      parts.push(parts.length === 0 ? current : ` ${current}`);
+      current = "";
+      octets = 0;
+      limit = 74;
+    }
+    current += character;
+    octets += size;
+  }
+  if (current) parts.push(parts.length === 0 ? current : ` ${current}`);
+
   return parts.join("\r\n");
 }
 
@@ -31,7 +58,9 @@ export function toVCard(contact: Contact): string {
     `EMAIL;TYPE=work:${escape(contact.email)}`,
   ];
 
-  if (contact.phone) lines.push(`TEL;TYPE=cell:${escape(contact.phone)}`);
+  // TEL defaults to a URI in vCard 4.0, and this app stores whatever the user
+  // typed, so it is declared as text rather than mislabelled as a tel: URI.
+  if (contact.phone) lines.push(`TEL;TYPE=cell;VALUE=text:${escape(contact.phone)}`);
   if (contact.company) lines.push(`ORG:${escape(contact.company)}`);
   if (contact.job_title) lines.push(`TITLE:${escape(contact.job_title)}`);
 

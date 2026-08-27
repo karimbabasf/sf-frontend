@@ -44,7 +44,13 @@ export function groupByInitial(contacts: Contact[]): DirectoryGroup[] {
     else groups.set(letter, [contact]);
   }
 
-  return Array.from(groups, ([letter, list]) => ({ letter, contacts: list }));
+  // Sections always run A-Z, then "#", whatever order the rows came back in.
+  // Sorting by email or company still files people under their surname.
+  return Array.from(groups, ([letter, list]) => ({ letter, contacts: list })).sort(
+    (a, b) =>
+      (a.letter === OTHER_LETTER ? 1 : 0) - (b.letter === OTHER_LETTER ? 1 : 0) ||
+      a.letter.localeCompare(b.letter),
+  );
 }
 
 /** "San Francisco, CA" for the row's second line, from the primary address. */
