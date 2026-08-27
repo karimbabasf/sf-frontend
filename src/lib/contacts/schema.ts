@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { ContactInput } from "./types";
+import { ADDRESS_TYPES, type AddressInput, type ContactInput, type ContactTextField } from "./types";
+
+/** Everything on a contact except its addresses, which validate separately. */
+export type ContactTextValues = Omit<ContactInput, "addresses">;
 
 /**
  * Client/server-shared validation for the contact form.
@@ -91,18 +94,13 @@ export const contactInputSchema = z.object({
     .default(null),
   company: optionalText(200, "Company"),
   job_title: optionalText(200, "Job title"),
-  address: optionalText(300, "Address"),
-  city: optionalText(120, "City"),
-  state: optionalText(120, "State"),
-  postal_code: optionalText(20, "Postal code"),
-  country: optionalText(120, "Country"),
   notes: z
     .string()
     .trim()
     .transform((value) => value || null)
     .nullable()
     .default(null),
-}) satisfies z.ZodType<ContactInput, unknown>;
+}) satisfies z.ZodType<ContactTextValues, unknown>;
 
 export type ContactFormValues = z.input<typeof contactInputSchema>;
 
@@ -125,7 +123,7 @@ export function zodFieldErrors(
 /* ------------------------------------------------------------------ */
 
 export interface ContactFieldSpec {
-  name: keyof ContactInput;
+  name: ContactTextField;
   label: string;
   type?: "text" | "email" | "tel" | "textarea" | "photo";
   required?: boolean;
@@ -216,48 +214,6 @@ export const CONTACT_FIELD_GROUPS: ContactFieldGroup[] = [
     ],
   },
   {
-    title: "Address",
-    description: "Optional postal details.",
-    fields: [
-      {
-        name: "address",
-        label: "Street address",
-        maxLength: 300,
-        placeholder: "1 Market St, Suite 400",
-        autoComplete: "street-address",
-        wide: true,
-      },
-      {
-        name: "city",
-        label: "City",
-        maxLength: 120,
-        placeholder: "San Francisco",
-        autoComplete: "address-level2",
-      },
-      {
-        name: "state",
-        label: "State / region",
-        maxLength: 120,
-        placeholder: "CA",
-        autoComplete: "address-level1",
-      },
-      {
-        name: "postal_code",
-        label: "Postal code",
-        maxLength: 20,
-        placeholder: "94105",
-        autoComplete: "postal-code",
-      },
-      {
-        name: "country",
-        label: "Country",
-        maxLength: 120,
-        placeholder: "USA",
-        autoComplete: "country-name",
-      },
-    ],
-  },
-  {
     title: "Notes",
     description: "Anything worth remembering. No length limit.",
     fields: [
@@ -280,11 +236,85 @@ export const CONTACT_FIELDS: ContactFieldSpec[] = CONTACT_FIELD_GROUPS.flatMap(
 /** Pull the contact fields out of a submitted form, as raw strings. */
 export function formDataToValues(
   formData: FormData,
-): Record<keyof ContactInput, string> {
+): Record<ContactTextField, string> {
   return Object.fromEntries(
     CONTACT_FIELDS.map((field) => [
       field.name,
       String(formData.get(field.name) ?? ""),
     ]),
-  ) as Record<keyof ContactInput, string>;
+  ) as Record<ContactTextField, string>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Addresses — a contact holds many, each typed Home, Work or Other    */
+/* ------------------------------------------------------------------ */
+
+/** Matches `MAX_ADDRESSES` in the API's schemas.py. */
+export const MAX_ADDRESSES = 10;
+
+export interface AddressPartSpec {
+  name: Exclude<keyof AddressInput, "type">;
+  label: string;
+  maxLength: number;
+  required?: boolean;
+  placeholder?: string;
+  autoComplete?: string;
+  wide?: boolean;
+}
+
+/** The same parts, and the same limits, the API enforces on an address. */
+export const ADDRESS_PARTS: AddressPartSpec[] = [
+  {
+    name: "street",
+    label: "Street address",
+    maxLength: 300,
+    required: true,
+    placeholder: "1 Market St, Suite 400",
+    autoComplete: "street-address",
+    wide: true,
+  },
+  { name: "city", label: "City", maxLength: 120, placeholder: "San Francisco", autoComplete: "address-level2" },
+  { name: "state", label: "State / region", maxLength: 120, placeholder: "CA", autoComplete: "address-level1" },
+  { name: "postal_code", label: "Postal code", maxLength: 20, placeholder: "94105", autoComplete: "postal-code" },
+  { name: "country", label: "Country", maxLength: 120, placeholder: "USA", autoComplete: "country-name" },
+];
+
+export const addressInputSchema = z.object({
+  type: z.enum(ADDRESS_TYPES),
+  street: requiredText(300, "Street address"),
+  city: optionalText(120, "City"),
+  state: optionalText(120, "State"),
+  postal_code: optionalText(20, "Postal code"),
+  country: optionalText(120, "Country"),
+}) satisfies z.ZodType<AddressInput, unknown>;
+
+export const addressListSchema = z
+  .array(addressInputSchema)
+  .max(MAX_ADDRESSES, `A contact can have at most ${MAX_ADDRESSES} addresses`);
+
+/**
+ * Collect `addresses.<i>.<part>` back into a list.
+ *
+ * The indexes come from the browser, so rows are gathered into a map and then
+ * re-numbered rather than trusted as array positions. A row whose street is
+ * blank is dropped, which is how an empty row the user added and left alone
+ * stops being an error.
+ */
+export function formDataToAddresses(formData: FormData): unknown[] {
+  const rows = new Map<number, Record<string, string>>();
+
+  for (const [key, value] of formData.entries()) {
+    const match = /^addresses\.(\d{1,3})\.(\w+)$/.exec(key);
+    if (!match) continue;
+    const index = Number(match[1]);
+    // Stop collecting once the cap is reached rather than building an unbounded
+    // map and rejecting it afterwards: the parsing itself is the cost.
+    if (!rows.has(index) && rows.size >= MAX_ADDRESSES) continue;
+    rows.set(index, { ...rows.get(index), [match[2]]: String(value) });
+  }
+
+  return [...rows.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, row]) => row)
+    .filter((row) => (row.street ?? "").trim());
 }

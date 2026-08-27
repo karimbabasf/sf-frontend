@@ -6,12 +6,13 @@ import Link from "next/link";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Field from "@/components/ui/Field";
 import PhotoField from "@/components/contacts/PhotoField";
+import AddressFields from "@/components/contacts/AddressFields";
 import Button, { buttonClasses } from "@/components/ui/Button";
 import { CONTACT_FIELD_GROUPS } from "@/lib/contacts/schema";
 import {
   EMPTY_FORM_STATE,
   type Contact,
-  type ContactInput,
+  type ContactTextField,
   type FormState,
 } from "@/lib/contacts/types";
 
@@ -51,7 +52,7 @@ export default function ContactForm({
 }) {
   const [state, formAction] = useActionState(action, EMPTY_FORM_STATE);
 
-  function valueFor(name: keyof ContactInput): string {
+  function valueFor(name: ContactTextField): string {
     return state.values?.[name] ?? contact?.[name] ?? "";
   }
 
@@ -101,6 +102,26 @@ export default function ContactForm({
           </div>
         </fieldset>
       ))}
+
+      <fieldset className="space-y-4">
+        <legend className="sr-only">Addresses</legend>
+
+        <div className="border-b border-hairline pb-2">
+          <h2 className="font-display text-sm font-semibold text-foreground">
+            Addresses
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            As many as you need, each marked Home, Work or Other.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <AddressFields
+            defaultValue={state.addressValues ?? contact?.addresses}
+            error={state.fieldErrors?.addresses}
+          />
+        </div>
+      </fieldset>
 
       <div className="flex items-center gap-2 border-t border-hairline pt-4">
         <SubmitButton label={submitLabel} />
