@@ -304,9 +304,12 @@ export function formDataToAddresses(formData: FormData): unknown[] {
   const rows = new Map<number, Record<string, string>>();
 
   for (const [key, value] of formData.entries()) {
-    const match = /^addresses\.(\d+)\.(\w+)$/.exec(key);
+    const match = /^addresses\.(\d{1,3})\.(\w+)$/.exec(key);
     if (!match) continue;
     const index = Number(match[1]);
+    // Stop collecting once the cap is reached rather than building an unbounded
+    // map and rejecting it afterwards: the parsing itself is the cost.
+    if (!rows.has(index) && rows.size >= MAX_ADDRESSES) continue;
     rows.set(index, { ...rows.get(index), [match[2]]: String(value) });
   }
 

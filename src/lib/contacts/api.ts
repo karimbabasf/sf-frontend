@@ -132,6 +132,19 @@ export function toFieldErrors(
 
   const fieldErrors: Partial<Record<keyof ContactInput, string>> = {};
   for (const issue of detail) {
+    // An address issue reads ["body", "addresses", 0, "street"]. Reporting the
+    // leaf would key it to a field the form does not render, so say which row.
+    const addressAt = issue.loc?.indexOf("addresses");
+    if (addressAt != null && addressAt >= 0) {
+      const row = issue.loc[addressAt + 1];
+      const part = issue.loc[issue.loc.length - 1];
+      fieldErrors.addresses ??=
+        typeof row === "number"
+          ? `Address ${row + 1}: ${part === "addresses" ? issue.msg : `${part} ${issue.msg}`}`
+          : issue.msg;
+      continue;
+    }
+
     const field = issue.loc?.[issue.loc.length - 1];
     if (typeof field === "string" && field !== "body") {
       fieldErrors[field as keyof ContactInput] ??= issue.msg;
