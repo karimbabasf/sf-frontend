@@ -67,7 +67,7 @@ const config: Config = {
           "sans-serif",
         ],
         mono: [
-          "var(--font-mono)",
+          "var(--font-mono, ui-monospace)",
           "JetBrains Mono",
           "ui-monospace",
           "monospace",
