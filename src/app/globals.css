@@ -150,3 +150,20 @@
     border-radius: 9999px;
   }
 }
+
+/* Print view: every avatar becomes a 1-bit halftone, the way a phone book
+   printed a photograph. Display only; the stored image is untouched. */
+[data-print-view] .contact-avatar,
+[data-print-view] img[class*="rounded-full"] {
+  filter: url(#halftone);
+  /* A filter renders the element into its own surface, which drops the
+     border-radius clip, so the circle is re-cut afterwards. */
+  clip-path: circle(50%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-print-view] .contact-avatar,
+  [data-print-view] img[class*="rounded-full"] {
+    transition: filter 150ms ease-out;
+  }
+}

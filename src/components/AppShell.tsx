@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import PrintViewToggle from "@/components/contacts/PrintViewToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import VersionFooter from "@/components/VersionFooter";
 
@@ -68,7 +69,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle />
+            <PrintViewToggle />
+          <ThemeToggle />
           </div>
         </div>
       </header>
