@@ -131,9 +131,12 @@ export default function PhotoField({
       return;
     }
 
+    // Takes the next token, so a resize still running is discarded. It also
+    // owns the busy flag now: that conversion's finally will refuse to clear it.
     selection.current += 1;
     setPhoto(generated);
     setRejected(null);
+    setBusy(false);
   }
 
   function onRemove() {
