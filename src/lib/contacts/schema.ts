@@ -30,9 +30,19 @@ export const PHOTO_MIME_TYPES: readonly string[] = [
   "image/webp",
   "image/gif",
 ];
-export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
-export const MAX_PHOTO_MB = MAX_PHOTO_BYTES / (1024 * 1024);
-/** Base64 inflates by 4/3; the slack covers the `data:` prefix. */
+/**
+ * Limits describe the photo we *store*, not the file the user picks. The picker
+ * downscales to a square avatar first, so a large source image is fine.
+ *
+ * The stored cap has to clear the Next.js Server Action body limit (1 MB by
+ * default), which the base64 form value counts against at 4/3 its size.
+ */
+export const MAX_PHOTO_BYTES = 512 * 1024;
+export const MAX_PHOTO_KB = MAX_PHOTO_BYTES / 1024;
+/** Source files above this are not worth decoding, whatever they claim to be. */
+export const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+/** Square avatars: bigger than any place we render one, small once encoded. */
+export const AVATAR_PX = 512;
 const MAX_PHOTO_CHARS = Math.ceil((MAX_PHOTO_BYTES * 4) / 3) + 64;
 
 const PHOTO_DATA_URL =
@@ -74,7 +84,7 @@ export const contactInputSchema = z.object({
     )
     .refine(
       (value) => value === "" || photoBytes(value) <= MAX_PHOTO_BYTES,
-      `Photo must be ${MAX_PHOTO_MB} MB or smaller`,
+      `Photo must be ${MAX_PHOTO_KB} KB or smaller once resized`,
     )
     .transform((value) => value || null)
     .nullable()
@@ -135,7 +145,7 @@ export interface ContactFieldGroup {
 export const CONTACT_FIELD_GROUPS: ContactFieldGroup[] = [
   {
     title: "Photo",
-    description: `Optional. PNG, JPEG, WebP, or GIF, up to ${MAX_PHOTO_MB} MB.`,
+    description: `Optional. Any PNG, JPEG, WebP or GIF; it is cropped square and resized to ${AVATAR_PX}px.`,
     fields: [
       {
         name: "photo",
