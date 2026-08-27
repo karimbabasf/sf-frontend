@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
-import { ImagePlus, UserRound, X } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type MouseEvent } from "react";
+import { ImagePlus, Sparkles, UserRound, X } from "lucide-react";
 import { buttonClasses } from "@/components/ui/Button";
+import { phoneAvatarDataUrl } from "@/lib/contacts/phoneAvatar";
 import {
   AVATAR_PX,
   MAX_PHOTO_BYTES,
@@ -114,6 +115,30 @@ export default function PhotoField({
     }
   }
 
+  /**
+   * Generate a face from the phone number already typed into the form. Read
+   * from the live form rather than a prop, because the number is usually
+   * entered in the same sitting as the photo.
+   */
+  function onGenerate(event: MouseEvent<HTMLButtonElement>) {
+    const form = event.currentTarget.form;
+    const phone = form?.elements.namedItem("phone");
+    const digits = phone instanceof HTMLInputElement ? phone.value : "";
+
+    const generated = phoneAvatarDataUrl(digits);
+    if (!generated) {
+      setRejected("Enter a phone number first, then generate.");
+      return;
+    }
+
+    // Takes the next token, so a resize still running is discarded. It also
+    // owns the busy flag now: that conversion's finally will refuse to clear it.
+    selection.current += 1;
+    setPhoto(generated);
+    setRejected(null);
+    setBusy(false);
+  }
+
   function onRemove() {
     selection.current += 1;
     setPhoto("");
@@ -161,6 +186,16 @@ export default function PhotoField({
             aria-describedby={message ? errorId : undefined}
             className="sr-only"
           />
+
+          <button
+            type="button"
+            onClick={onGenerate}
+            title="Build a halftone face from the phone number"
+            className={buttonClasses("secondary", "md")}
+          >
+            <Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+            From number
+          </button>
 
           {photo ? (
             <button type="button" onClick={onRemove} className={buttonClasses("ghost", "sm")}>
